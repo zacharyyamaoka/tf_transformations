@@ -6,6 +6,7 @@ setup.cfg
 setup.py
 resource/tf_transformations
 test/test_flake8.py
+test/test_matrix_vector.py
 test/test_pep257.py
 test/test_transformations.py
 tf_transformations/__init__.py

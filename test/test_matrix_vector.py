@@ -298,16 +298,16 @@ def test_apply_transform_matrix_identity():
 
 def test_apply_transform_matrix_local_vs_global():
     """Test apply_transform_matrix local vs global."""
-    source = np.eye(4)
-    source[:3, 3] = [1.0, 0.0, 0.0]
+    # Use a rotation in source to make local vs global different
+    source = xyzrpy_to_matrix(xyz=(1.0, 0.0, 0.0), rpy=(np.pi/2, 0.0, 0.0))
     
     transform = np.eye(4)
-    transform[:3, 3] = [0.0, 1.0, 0.0]
+    transform[:3, 3] = [0.0, 1.0, 0.0]  # Translate in Y direction
     
     result_local = apply_transform_matrix(source, transform, local=True)
     result_global = apply_transform_matrix(source, transform, local=False)
     
-    # Results should be different
+    # Results should be different when source has rotation
     assert not np.allclose(result_local, result_global)
     
     # Global: transform first, then source
