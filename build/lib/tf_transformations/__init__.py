@@ -1269,26 +1269,3 @@ def is_same_transform(matrix0, matrix1):
     matrix1 = numpy.array(matrix1, dtype=numpy.float64, copy=True)
     matrix1 /= matrix1[3, 3]
     return numpy.allclose(matrix0, matrix1)
-
-
-from tf_transformations.matrix import (
-    quaternion_to_axangle,
-    rpy_to_R,
-    xyzrpy_to_matrix,
-    matrix_to_xyzrpy,
-    matrix_is_close,
-    matrix_cartesian_distance,
-    quaternion_euler_diff,
-    quaternion_axangle_diff,
-    matrix_from_points,
-    xyzrpy_offset,
-    translate_matrix,
-    rotate_matrix,
-    apply_transform_matrix,
-)
-from tf_transformations.vector import (
-    distance,
-    magnitude,
-    angle_between,
-    axis_angle_between,
-)
