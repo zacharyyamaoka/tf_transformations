@@ -261,12 +261,11 @@ def projection_matrix(point, normal, direction=None,
 
     """
     M = numpy.identity(4)
-    point = numpy.array(point[:3], dtype=numpy.float64, copy=False)
+    point = numpy.asarray(point[:3], dtype=numpy.float64)
     normal = unit_vector(normal[:3])
     if perspective is not None:
         # perspective projection
-        perspective = numpy.array(perspective[:3], dtype=numpy.float64,
-                                  copy=False)
+        perspective = numpy.asarray(perspective[:3], dtype=numpy.float64)
         M[0, 0] = M[1, 1] = M[2, 2] = numpy.dot(perspective-point, normal)
         M[:3, :3] -= numpy.outer(perspective, normal)
         if pseudo:
@@ -279,7 +278,7 @@ def projection_matrix(point, normal, direction=None,
         M[3, 3] = numpy.dot(perspective, normal)
     elif direction is not None:
         # parallel projection
-        direction = numpy.array(direction[:3], dtype=numpy.float64, copy=False)
+        direction = numpy.asarray(direction[:3], dtype=numpy.float64)
         scale = numpy.dot(direction, normal)
         M[:3, :3] -= numpy.outer(direction, normal) / scale
         M[:3, 3] = direction * (numpy.dot(point, normal) / scale)
@@ -323,7 +322,7 @@ def projection_from_matrix(matrix, pseudo=False):
     True
 
     """
-    M = numpy.array(matrix, dtype=numpy.float64, copy=False)
+    M = numpy.asarray(matrix, dtype=numpy.float64)
     M33 = M[:3, :3]
     l, V = numpy.linalg.eig(M)
     i = numpy.where(abs(numpy.real(l) - 1.0) < 1e-8)[0]
@@ -614,8 +613,8 @@ def superimposition_matrix(v0, v1, scaling=False, usesvd=True):
     True
 
     """
-    v0 = numpy.array(v0, dtype=numpy.float64, copy=False)[:3]
-    v1 = numpy.array(v1, dtype=numpy.float64, copy=False)[:3]
+    v0 = numpy.asarray(v0, dtype=numpy.float64)[:3]
+    v1 = numpy.asarray(v1, dtype=numpy.float64)[:3]
 
     if v0.shape != v1.shape or v0.shape[1] < 3:
         raise ValueError('Vector sets are of wrong shape or type.')
@@ -1088,7 +1087,7 @@ def arcball_constrain_to_axis(point, axis):
 
 def arcball_nearest_axis(point, axes):
     """Return axis, which arc is nearest to point."""
-    point = numpy.array(point, dtype=numpy.float64, copy=False)
+    point = numpy.asarray(point, dtype=numpy.float64)
     nearest = None
     mx = -1.0
     for axis in axes:
@@ -1193,7 +1192,7 @@ def unit_vector(data, axis=None, out=None):
             return data
     else:
         if out is not data:
-            out[:] = numpy.array(data, copy=False)
+            out[:] = numpy.asarray(data)
         data = out
     length = numpy.atleast_1d(numpy.sum(data*data, axis))
     numpy.sqrt(length, length)
@@ -1291,4 +1290,5 @@ from tf_transformations.vector import (
     magnitude,
     angle_between,
     axis_angle_between,
+    normalize,
 )
