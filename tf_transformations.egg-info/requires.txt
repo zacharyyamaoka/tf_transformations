@@ -1,3 +1,0 @@
-numpy>=1.20
-transforms3d>=0.4
-pytest
