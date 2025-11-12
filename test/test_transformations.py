@@ -32,6 +32,7 @@ import math
 import random
 
 import numpy
+import pytest
 
 from tf_transformations import _AXES2TUPLE, clip_matrix, euler_from_quaternion
 from tf_transformations import compose_matrix, concatenate_matrices
@@ -482,3 +483,6 @@ def test_concatenate_matrices():
 def test_is_same_transform():
     assert is_same_transform(numpy.identity(4), numpy.identity(4))
     assert not is_same_transform(numpy.identity(4), random_rotation_matrix())
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
