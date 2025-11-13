@@ -37,7 +37,7 @@ def angle_between(u: np.ndarray, v: np.ndarray) -> float:
 def axis_angle_between(u: np.ndarray, v: np.ndarray) -> tuple[np.ndarray, float]:
     """Compute the axis and smallest angle to rotate vector u onto vector v.
 
-    Args:
+    DescriptionArgs:
         u, v: Input vectors (any dimension ≥ 3). Only first 3 components matter.
 
     Returns:
