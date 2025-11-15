@@ -1284,6 +1284,8 @@ from tf_transformations.matrix import (
     translate_matrix,
     rotate_matrix,
     apply_transform_matrix,
+    CartesianPathMetrics,
+    cartesian_path_analysis,
 )
 from tf_transformations.vector import (
     distance,

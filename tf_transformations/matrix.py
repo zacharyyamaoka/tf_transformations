@@ -1,7 +1,8 @@
 
 
+from dataclasses import dataclass
 from transforms3d.euler import euler2mat, mat2euler
-from transforms3d.quaternions import quat2axangle 
+from transforms3d.quaternions import quat2axangle
 from tf_transformations import (
     euler_from_quaternion,
     quaternion_inverse,
@@ -177,3 +178,112 @@ def apply_transform_matrix(source_matrix: np.ndarray, transform_matrix: np.ndarr
         result_matrix = np.dot(transform_matrix, source_matrix)  # Global offset
 
     return result_matrix
+
+
+def _centered_differences(path: np.ndarray, dt: float) -> np.ndarray:
+    """Compute centered finite-difference derivative for sampled paths."""
+    count, dim = path.shape
+    diffs = np.zeros_like(path)
+
+    for idx in range(count):
+        if 0 < idx < count - 1:
+            diffs[idx] = (path[idx + 1] - path[idx - 1]) / (2.0 * dt)
+        elif idx == 0 and count > 1:
+            diffs[idx] = (path[idx + 1] - path[idx]) / dt
+        elif count > 1:
+            diffs[idx] = (path[idx] - path[idx - 1]) / dt
+
+    if count <= 1:
+        diffs[:] = 0.0
+
+    return diffs
+
+
+@dataclass
+class CartesianPathMetrics:
+    """Cumulative path, velocity, and acceleration metrics for Cartesian paths."""
+
+    t_path: np.ndarray
+    path: np.ndarray
+    path_d: np.ndarray
+    path_dd: np.ndarray
+    dimension_names: list[str]
+
+
+def cartesian_path_analysis(
+    matrix_path: np.ndarray,
+    t: np.ndarray,
+    vec_directions: list[np.ndarray] | np.ndarray | None = None,
+) -> CartesianPathMetrics:
+    """Compute normalized/raw Cartesian progress metrics plus derivatives."""
+    n_points = len(matrix_path)
+    if len(t) != n_points:
+        raise ValueError(f"Time array length ({len(t)}) must match path length ({n_points})")
+
+    dt = float(np.mean(np.diff(t))) if n_points > 1 else 0.1
+
+    xyz_path = np.zeros(n_points)
+    for idx in range(1, n_points):
+        xyz_path[idx] = xyz_path[idx - 1] + matrix_cartesian_distance(matrix_path[idx - 1], matrix_path[idx])
+    total_xyz = xyz_path[-1]
+    xyz_norm = xyz_path / total_xyz if total_xyz > 1e-9 else xyz_path.copy()
+
+    rpy_path = np.zeros(n_points)
+    for idx in range(1, n_points):
+        q1 = quaternion_from_matrix(matrix_path[idx - 1])
+        q2 = quaternion_from_matrix(matrix_path[idx])
+        _, theta = quaternion_axangle_diff(q1, q2)
+        rpy_path[idx] = rpy_path[idx - 1] + abs(theta)
+    total_rpy = rpy_path[-1]
+    rpy_norm = rpy_path / total_rpy if total_rpy > 1e-9 else rpy_path.copy()
+
+    xyz_norm_d = _centered_differences(xyz_norm.reshape(-1, 1), dt=dt).flatten()
+    rpy_norm_d = _centered_differences(rpy_norm.reshape(-1, 1), dt=dt).flatten()
+    xyz_path_d = _centered_differences(xyz_path.reshape(-1, 1), dt=dt).flatten()
+    rpy_path_d = _centered_differences(rpy_path.reshape(-1, 1), dt=dt).flatten()
+
+    xyz_norm_dd = _centered_differences(xyz_norm_d.reshape(-1, 1), dt=dt).flatten()
+    rpy_norm_dd = _centered_differences(rpy_norm_d.reshape(-1, 1), dt=dt).flatten()
+    xyz_path_dd = _centered_differences(xyz_path_d.reshape(-1, 1), dt=dt).flatten()
+    rpy_path_dd = _centered_differences(rpy_path_d.reshape(-1, 1), dt=dt).flatten()
+
+    dimension_names = ["XYZ_norm", "RPY_norm", "XYZ", "RPY"]
+    path = np.column_stack([xyz_norm, rpy_norm, xyz_path, rpy_path])
+    path_d = np.column_stack([xyz_norm_d, rpy_norm_d, xyz_path_d, rpy_path_d])
+    path_dd = np.column_stack([xyz_norm_dd, rpy_norm_dd, xyz_path_dd, rpy_path_dd])
+
+    if vec_directions is not None:
+        if isinstance(vec_directions, np.ndarray) and vec_directions.ndim == 1:
+            vec_iterable = [vec_directions]
+        else:
+            vec_iterable = list(vec_directions)
+
+        for vec_direction in vec_iterable:
+            vec_dir = np.array(vec_direction, dtype=float)
+            norm = np.linalg.norm(vec_dir)
+            if norm < 1e-9:
+                raise ValueError("vec_directions entries must be non-zero vectors")
+            vec_dir /= norm
+
+            vec_path = np.zeros(n_points)
+            for idx in range(1, n_points):
+                displacement = matrix_path[idx][:3, 3] - matrix_path[idx - 1][:3, 3]
+                vec_path[idx] = vec_path[idx - 1] + float(np.dot(displacement, vec_dir))
+
+            vec_path_d = _centered_differences(vec_path.reshape(-1, 1), dt=dt).flatten()
+            vec_path_dd = _centered_differences(vec_path_d.reshape(-1, 1), dt=dt).flatten()
+
+            path = np.column_stack([path, vec_path])
+            path_d = np.column_stack([path_d, vec_path_d])
+            path_dd = np.column_stack([path_dd, vec_path_dd])
+
+            vec_str = f"Vec[{vec_dir[0]:.1f},{vec_dir[1]:.1f},{vec_dir[2]:.1f}]"
+            dimension_names.append(vec_str)
+
+    return CartesianPathMetrics(
+        t_path=t,
+        path=path,
+        path_d=path_d,
+        path_dd=path_dd,
+        dimension_names=dimension_names,
+    )
